@@ -1,0 +1,23 @@
+{
+    "name": "levi",
+    "gender": "Male",
+    "race": "Human",
+    "physical_attributes": {
+        "weight": "95kg",
+        "height": "187",
+        "looks": "handsome",
+        "hair_color": "black",
+        "hair_length": "bald",
+        "tattoos": "no"
+    },
+    "strengths": [
+        "Endurance",
+        "Perception",
+        "Spiritual Guidance"
+    ],
+    "weaknesses": [
+        "Lack of Agility",
+        "Fear of the Unknown",
+        "Naivety"
+    ]
+}

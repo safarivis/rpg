@@ -1,0 +1,38 @@
+{
+    "name": "strijder",
+    "gender": "Male",
+    "race": "Human",
+    "time_period": "Future",
+    "setting": "Realism",
+    "role": "warrior",
+    "favorites": {
+        "music": "Rock",
+        "movies": "Blade runner , interstelaar, the revenant",
+        "books": "Dune, lord of the rings, scripture",
+        "graphics_style": "Realistic with a hint of fantasy"
+    },
+    "physical_attributes": {
+        "weight": "95kg",
+        "height": "188cm",
+        "looks": "Handsome",
+        "hair_color": "Black",
+        "hair_length": "Shaved",
+        "tattoos": "No"
+    },
+    "strengths": [
+        "Endurance",
+        "Perception",
+        "Spiritual Guidance"
+    ],
+    "weaknesses": [
+        "Lack of Agility",
+        "Fear of the Unknown",
+        "Naivety"
+    ],
+    "role_details": "Mercenary",
+    "role_motivation": "Survival",
+    "role_field": "",
+    "role_goal": "",
+    "role_ship": "",
+    "role_fleet": ""
+}
