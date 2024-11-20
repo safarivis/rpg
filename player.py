@@ -37,7 +37,18 @@ default_player = {
     "role_field": "",
     "role_goal": "",
     "role_ship": "",
-    "role_fleet": ""
+    "role_fleet": "",
+    "resources": {
+        'health': 100,  # Base health
+        'credits': 1000,  # Starting money
+        'fuel': 100,  # Ship fuel
+        'supplies': 100,  # General supplies
+        'reputation': 50,  # General reputation
+        'time': {
+            'cycles': 0,  # Game cycles passed
+            'hours': 0    # In-game hours
+        }
+    }
 }
 
 # Predefined Skills and Weaknesses
@@ -45,15 +56,20 @@ available_skills = ["Lockpicking", "Strategy", "Weapons Mastery", "Stealth", "Ne
 random_weaknesses = ["Fear of Heights", "Weakness for Beautiful Women", "Allergy to Dust", "Claustrophobia", "Recklessness"]
 
 # --- Utility Functions ---
-def load_player_data(name):
+def load_player_data(name=None):
     """Load player data from a JSON file."""
-    filename = f"{name.lower()}.json"
+    if name is None:
+        return None
+        
+    filename = f"{name}.json"
     try:
-        with open(filename, "r") as file:
-            return json.load(file)
+        with open(filename, 'r') as f:
+            return json.load(f)
     except FileNotFoundError:
-        print(f"No saved character found with the name '{name}'. Starting fresh.")
-        return default_player.copy()
+        return None
+    except json.JSONDecodeError:
+        print(f"Error: {filename} is corrupted")
+        return None
 
 def save_player_data(player):
     """Save player data to a JSON file."""
@@ -110,7 +126,58 @@ def initialize_relationships(player):
     for name, details in player["relationships"].items():
         print(f"{name}: {details}")
 
-# --- Dynamic Updates ---
+def initialize_resources(player):
+    """Initialize or reset player's resources."""
+    player['resources'] = {
+        'health': 100,  # Base health
+        'credits': 1000,  # Starting money
+        'fuel': 100,  # Ship fuel
+        'supplies': 100,  # General supplies
+        'reputation': 50,  # General reputation
+        'time': {
+            'cycles': 0,  # Game cycles passed
+            'hours': 0    # In-game hours
+        }
+    }
+    
+    if 'relationships' not in player:
+        player['relationships'] = {}
+
+def update_resources(player, changes):
+    """Update player resources based on changes dictionary."""
+    if 'resources' not in player:
+        initialize_resources(player)
+    
+    for resource, change in changes.items():
+        if resource in player['resources']:
+            if isinstance(player['resources'][resource], dict):
+                for subkey, value in change.items():
+                    player['resources'][resource][subkey] += value
+            else:
+                player['resources'][resource] += change
+                # Ensure resources stay within reasonable bounds
+                if resource in ['health', 'fuel', 'supplies']:
+                    player['resources'][resource] = max(0, min(100, player['resources'][resource]))
+                elif resource == 'reputation':
+                    player['resources'][resource] = max(0, min(100, player['resources'][resource]))
+
+def update_relationship(player, npc_name, loyalty_change, new_status=None):
+    """Update relationship with an NPC."""
+    if 'relationships' not in player:
+        player['relationships'] = {}
+    
+    if npc_name not in player['relationships']:
+        player['relationships'][npc_name] = {
+            'loyalty': 50,
+            'status': 'neutral'
+        }
+    
+    player['relationships'][npc_name]['loyalty'] = max(0, min(100, 
+        player['relationships'][npc_name]['loyalty'] + loyalty_change))
+    
+    if new_status:
+        player['relationships'][npc_name]['status'] = new_status
+
 def update_loyalty(player, npc_name, change):
     """Update NPC loyalty based on player actions."""
     if npc_name in player["relationships"]:
@@ -129,3 +196,5 @@ def update_personality(player, trait):
     }
     player["personality"]["alignment"] = alignments.get(trait, player["personality"]["alignment"])
     print(f"\nPersonality updated: Alignment - {player['personality']['alignment']}, Traits - {', '.join(player['personality']['traits'])}")
+
+# --- Dynamic Updates ---

@@ -43,6 +43,18 @@ class StoryEngine:
                 relevant_npcs.append({"name": npc, "attitude": "hostile", "can_help": False})
         return relevant_npcs
 
+    def _find_relevant_npcs(self, relevant_npcs):
+        """Find the most relevant NPCs."""
+        # Sort the relevant NPCs based on loyalty
+        sorted_npcs = sorted(relevant_npcs, key=lambda x: self.player['relationships'][x['name']]['loyalty'], reverse=True)
+        
+        # Create the elevant_npcs list
+        elevant_npcs = []
+        for i, npc in enumerate(sorted_npcs):
+            elevant_npcs.append({"name": npc, "attitude": "important", "can_help": True if self.player['relationships'][npc['name']]['loyalty'] > 0 else False})
+        
+        return elevant_npcs
+
     def _generate_random_events(self):
         """Generate events influenced by player state."""
         events = [
@@ -85,10 +97,11 @@ class StoryEngine:
         elif outcome["world_impact"] == "negative":
             self.story_state["world_state"] = "chaos"
 
-    def get_story_summary(self):
-        """Provide a summary of the story so far."""
-        summary = f"World State: {self.story_state['world_state']}\n"
-        summary += "Past Events:\n"
-        for i, event in enumerate(self.story_state["past_events"], 1):
-            summary += f"{i}. {event['effect']} (Success: {event['success']})\n"
-        return summary
+def get_story_summary(self):
+    """Provide a summary of the story so far."""
+    summary = f"World State: {self.story_state['world_state']}\n"
+    summary += "Past Events:\n"
+    for i, event in enumerate(self.story_state["past_events"], 1):
+        summary += f"{i}. {event['effect']} (Success: {event['success']})\n"
+    return summary
+       

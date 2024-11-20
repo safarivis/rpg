@@ -10,8 +10,11 @@ def get_valid_input(prompt, options=None):
         - str: The validated input.
     """
     while True:
-        response = input(prompt).strip().capitalize()
-        if not options or response in options:
+        response = input(prompt).strip().lower()
+        if not options:
+            return response
+        options_lower = [opt.lower() for opt in options]
+        if response in options_lower:
             return response
         print(f"Invalid choice. Valid options are: {', '.join(options)}")
 

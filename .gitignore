@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+rpg_env/
+pip-cache/
+
+# IDE
+.vscode/
+*.swp
+*.swo
+
+# Environment and secrets
+.env
+mistral key.txt
+
+# Local game state
+*.json
+
+# Executables and binaries
+*.exe
+
+# Cache and temporary files
+.cache/
+.pytest_cache/
+*.save
+
+# Images (if they're not meant to be in version control)
+Images/

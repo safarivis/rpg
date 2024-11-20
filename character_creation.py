@@ -10,10 +10,9 @@ def dark_room_intro(player):
 
     # Gender Selection
     player["gender"] = get_valid_input(
-        "The voice asks: 'Were you made to bear children?' (yes/no): ", 
-        ["Yes", "No"]
-    ).lower()
-    player["gender"] = "Female" if player["gender"] == "yes" else "Male"
+        "The voice asks: 'What is your gender?' (Male/Female/Other): ", 
+        ["Male", "Female", "Other"]
+    )
 
     # Race Selection
     print("\nThe voice continues: 'What race are you?'")
@@ -113,12 +112,70 @@ def choose_strengths(player):
                 print("Please enter a valid number.")
 
 
+# Initialize Skills
+def initialize_skills(player):
+    """Initialize player skills based on their role and strengths."""
+    available_skills = {
+        "warrior": ["Combat", "Tactics", "Survival", "Leadership"],
+        "scientist": ["Research", "Analysis", "Technology", "Problem Solving"],
+        "pilot": ["Navigation", "Vehicle Operation", "Quick Reflexes", "System Management"],
+        # Add more role-specific skills as needed
+    }
+    
+    # Get base skills from role
+    role_lower = player["role"].lower()
+    base_skills = []
+    for role_key in available_skills:
+        if role_key in role_lower:
+            base_skills.extend(available_skills[role_key])
+            break
+    
+    # Add generic skills
+    generic_skills = ["Perception", "Communication", "Stealth", "First Aid"]
+    all_available_skills = list(set(base_skills + generic_skills))
+    
+    print("\nSelect your character's skills (choose 3):")
+    for i, skill in enumerate(all_available_skills, 1):
+        print(f"{i}. {skill}")
+    
+    player["skills"] = []
+    while len(player["skills"]) < 3:
+        try:
+            choice = int(input(f"\nSelect skill #{len(player['skills']) + 1} (1-{len(all_available_skills)}): "))
+            if 1 <= choice <= len(all_available_skills):
+                selected_skill = all_available_skills[choice - 1]
+                if selected_skill not in player["skills"]:
+                    player["skills"].append(selected_skill)
+                else:
+                    print("You've already selected that skill. Choose another.")
+            else:
+                print("Invalid selection. Please try again.")
+        except ValueError:
+            print("Please enter a valid number.")
+
+
 # Character Creation Orchestrator
-def character_creation(player):
+def character_creation(player=None):
     """Orchestrates the full character creation process."""
+    if player is None:
+        player = default_player.copy()
+    
     dark_room_intro(player)
     clarify_role(player)
     customize_physical_attributes(player)
     customize_favorites(player)
     choose_strengths(player)
-    save_player_data(player)
+    initialize_skills(player)
+    
+    return player
+
+print("Script is starting...")
+
+if __name__ == "__main__":
+    try:
+        print("Starting character creation...")
+        player = character_creation()
+        print("\nFinal Player Data:")
+        print(player)
+    except Exception as e:
+        print(f"An error occurred: {e}")
