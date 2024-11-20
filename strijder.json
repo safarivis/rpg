@@ -4,12 +4,12 @@
     "race": "Human",
     "time_period": "Future",
     "setting": "Realism",
-    "role": "warrior",
+    "role": "Warrior",
     "favorites": {
         "music": "Rock",
-        "movies": "Blade runner , interstelaar, the revenant",
-        "books": "Dune, lord of the rings, scripture",
-        "graphics_style": "Realistic with a hint of fantasy"
+        "movies": "Blade runner, the revenant",
+        "books": "Dune, lotr, scripture",
+        "graphics_style": "A mix"
     },
     "physical_attributes": {
         "weight": "95kg",
@@ -17,22 +17,53 @@
         "looks": "Handsome",
         "hair_color": "Black",
         "hair_length": "Shaved",
-        "tattoos": "No"
+        "tattoos": "Unit badge on right shoulder"
     },
     "strengths": [
         "Endurance",
         "Perception",
         "Spiritual Guidance"
     ],
-    "weaknesses": [
-        "Lack of Agility",
-        "Fear of the Unknown",
-        "Naivety"
+    "weaknesses": [],
+    "skills": [
+        "Combat",
+        "Survival",
+        "Tactics"
     ],
+    "inventory": [],
+    "relationships": {},
+    "personality": {
+        "alignment": "Neutral",
+        "traits": []
+    },
     "role_details": "Mercenary",
     "role_motivation": "Survival",
     "role_field": "",
     "role_goal": "",
     "role_ship": "",
-    "role_fleet": ""
+    "role_fleet": "",
+    "resources": {
+        "health": 100,
+        "credits": 1000,
+        "fuel": 100,
+        "supplies": 100,
+        "reputation": 50,
+        "time": {
+            "cycles": 0,
+            "hours": 0
+        }
+    },
+    "current_event": {
+        "type": "dialogue",
+        "description": "Your first day in the sprawling cyberpunk metropolis.",
+        "choices": [
+            "Gather information",
+            "Take action",
+            "Call for backup"
+        ],
+        "context": {},
+        "last_interaction": "1",
+        "last_scene": "\u001b[33mAs you consider your options, the burly man with the scar steps closer, his shadow looming over you. His eyes seem to pierce the darkness, evaluating you with a cold, calculating stare. The tension in the room is palpable, the air thick with the scent of sweat and fear.\n\nYou can hear the faint hum of the tattered backpack, its buzzing growing louder as the man approaches. It's clear that the backpack contains something valuable, something worth fighting for.\n\nAs you prepare to make your move, the man speaks again, his voice harsh and gravelly. \"I asked you a question, guest. What brings you to our humble abode?\"\n\nYou have a few options:\n\n1. Approach the man directly, trying to defuse the situation with words.\n2. Sneak past him and make a run for the tattered backpack.\n3. Attack the man, hoping to take control of the situation with force.\n4. Try to reason with him, offering information or services in exchange for safe passage.\n\nWhat will you do?\u001b[0m"
+    },
+    "nsfw_enabled": true
 }

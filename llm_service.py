@@ -6,6 +6,7 @@ from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
 from config import config
 from character_manager import CharacterManager
+from npc_manager import NPCManager
 from datetime import datetime
 
 # Initialize colorama for Windows compatibility
@@ -26,10 +27,12 @@ class LLMService:
             "major_events": [],
             "relationships": {},
             "locations": {},
-            "current_plot": None
+            "current_plot": None,
+            "story_progress": []
         }
         self.conversation_history = []
         self.character_manager = CharacterManager()
+        self.npc_manager = NPCManager()
         self.current_character = None
         self.current_character_name = None
         
@@ -131,10 +134,31 @@ class LLMService:
             # Build a narrative of recent events
             recent_narrative = self._build_recent_narrative()
             
+            # Track major story events and quest progress
+            if 'story_progress' not in self.story_context:
+                self.story_context['story_progress'] = []
+            
+            # Track important story beats
+            story_beats = {
+                'black decoder': 'Acquired the black decoder device',
+                'data chip': 'Received encrypted data chip from Eva',
+                'cargo': 'Assigned to protect valuable cargo',
+                'safe house': 'Moved to safe house location',
+                'compromised': 'Cargo and device were compromised'
+            }
+            
+            for beat_key, beat_desc in story_beats.items():
+                if beat_key in prompt.lower() or beat_key in recent_narrative.lower():
+                    if beat_desc not in self.story_context['story_progress']:
+                        self.story_context['story_progress'].append(beat_desc)
+
             system_prompt = f"""You are the AI Dungeon Master for a cyberpunk RPG game. Your role is to create an immersive, atmospheric experience.
 
 Current Character State:
 {char_state}
+
+Story Progress:
+{chr(10).join(f"- {event}" for event in self.story_context['story_progress'])}
 
 Recent Events:
 {recent_narrative}
@@ -150,10 +174,10 @@ Setting: A gritty cyberpunk future where high technology meets low life. Neon li
 Guidelines:
 1. Describe what the player sees, hears, and experiences in vivid detail
 2. Include sensory details: smells, sounds, sights, atmosphere
-3. Introduce interesting NPCs with distinct personalities
-4. Create opportunities for interaction through environmental details
-5. Maintain a gritty, cyberpunk atmosphere
-6. React to player actions with realistic consequences
+3. Maintain consistency with previous events and character relationships
+4. React to player actions with realistic consequences
+5. NEVER repeat exact dialogue or scenes
+6. Keep track of items, relationships, and story progress
 7. NEVER include system messages or DM notes in your responses
 8. Continue the scene from where we left off, maintaining consistency with recent events
 
@@ -237,45 +261,71 @@ Remember: You are actively narrating a scene. Never break character or include m
         if not self.current_character:
             return
 
+        # Initialize required dictionaries
+        if 'inventory' not in self.current_character:
+            self.current_character['inventory'] = []
+        if 'relationships' not in self.current_character:
+            self.current_character['relationships'] = {}
+        if 'npcs' not in self.current_character:
+            self.current_character['npcs'] = {}
+
+        # NPC descriptions
+        npc_descriptions = {
+            'eva': {
+                'name': 'Eva',
+                'appearance': 'A young woman with a stylish, edgy appearance. She has short, slightly messy, platinum-blonde hair with hints of pastel or cool tones, giving her a modern and bold look. Her makeup is subtle but accentuates her sharp features, particularly her eyes and lips.',
+                'style': 'She wears layered necklaces, including chains and chokers, along with earrings that add to her contemporary and slightly alternative vibe. Her outfit includes a leather jacket, contributing to her urban and confident style.',
+                'personality': 'Confident, mysterious, and tech-savvy',
+                'role': 'Tech specialist and information broker'
+            },
+            'fixer jack': {
+                'name': 'Fixer Jack',
+                'appearance': 'A tall, lean man with a scar running down the left side of his face. His eyes are cold and calculating.',
+                'style': 'Professional but intimidating demeanor',
+                'personality': 'Direct, business-oriented, and commanding respect',
+                'role': 'Underground job broker and fixer'
+            }
+        }
+
+        # Check for item acquisitions
+        items_to_check = {
+            'black decoder': 'Black Decoder Device',
+            'energy sword': 'Energy Sword',
+            'body armor': 'Reinforced Body Armor',
+            'stims': 'Stim Packs',
+            'healing packs': 'Healing Packs',
+            'data chip': 'Encrypted Data Chip'
+        }
+        
+        for item_text, item_name in items_to_check.items():
+            if item_text in response.lower() and item_name not in self.current_character['inventory']:
+                self.current_character['inventory'].append(item_name)
+
+        # Update relationships and NPC descriptions
+        for npc_key, npc_data in npc_descriptions.items():
+            if npc_key in response.lower():
+                # Add or update NPC description
+                self.current_character['npcs'][npc_data['name']] = npc_data
+                
+                # Update relationship if not exists
+                if npc_data['name'] not in self.current_character['relationships']:
+                    self.current_character['relationships'][npc_data['name']] = 'Neutral'
+                    
+                # Update relationship based on interaction
+                if any(pos in response.lower() for pos in ['smile', 'help', 'thank', 'impressed']):
+                    self.current_character['relationships'][npc_data['name']] = 'Friendly'
+                elif any(neg in response.lower() for neg in ['threat', 'warning', 'danger']):
+                    self.current_character['relationships'][npc_data['name']] = 'Cautious'
+
         # Update location if it changed
         if 'you arrive at' in response.lower() or 'you reach' in response.lower():
             for line in response.split('.'):
                 if 'you arrive at' in line.lower() or 'you reach' in response.lower():
-                    self.current_character['location'] = line.strip()
+                    self.current_character['current_location'] = line.strip()
                     break
 
-        # Update inventory and credits for purchases
-        if 'purchase' in prompt.lower() or 'buy' in prompt.lower() or "i'll take" in prompt.lower():
-            # Extract item and price information
-            if 'Ghost Blade' in response:
-                if 'inventory' not in self.current_character:
-                    self.current_character['inventory'] = []
-                self.current_character['inventory'].append('Ghost Blade Energy Sword')
-                self.current_character['resources']['credits'] -= 12000
-
-            elif 'Neon Slasher' in response:
-                if 'inventory' not in self.current_character:
-                    self.current_character['inventory'] = []
-                self.current_character['inventory'].append('Neon Slasher Energy Sword')
-                self.current_character['resources']['credits'] -= 15000
-
-        # Update relationships if new NPCs are met
-        if 'introduces' in response.lower() or 'named' in response.lower():
-            for line in response.split('.'):
-                if 'introduces' in line.lower() or 'named' in line.lower():
-                    words = line.split()
-                    for i, word in enumerate(words):
-                        if word.lower() in ['named', 'called']:
-                            if i + 1 < len(words):
-                                npc_name = words[i + 1].strip(',"')
-                                if 'relationships' not in self.current_character:
-                                    self.current_character['relationships'] = {}
-                                if npc_name not in self.current_character['relationships']:
-                                    self.current_character['relationships'][npc_name] = 'Neutral'
-
         # Save any updates
-        if self.current_character and self.current_character_name:
-            self.character_manager.save_character(self.current_character_name, self.current_character)
+        self.save_current_character()
 
     def _build_recent_narrative(self):
         """Build a narrative of recent events from conversation history."""
@@ -397,6 +447,43 @@ Remember: You are actively narrating a scene. Never break character or include m
         response = self.generate_response(prompt)
         return self._parse_dialogue_response(response)
     
+    def get_npc_context(self, npc_id: str) -> Dict[str, Any]:
+        """Get NPC context for the story."""
+        npc_data = self.npc_manager.get_npc(npc_id)
+        if not npc_data:
+            return {}
+        
+        # Get relevant NPC information for the current context
+        return {
+            "name": npc_data["data"]["name"],
+            "description": npc_data["data"]["description"],
+            "current_relationship": npc_data["relationships"].get("player", {}).get("status", "neutral"),
+            "last_interaction": npc_data["relationships"].get("player", {}).get("last_interaction", None),
+            "recent_events": [event for event in npc_data["story_progression"][-3:]]  # Get last 3 events
+        }
+
+    def update_npc_after_interaction(self, npc_id: str, interaction_data: Dict[str, Any]):
+        """Update NPC state after an interaction."""
+        # Add the conversation
+        self.npc_manager.add_conversation(npc_id, {
+            "content": interaction_data.get("conversation", ""),
+            "location": self.current_character.get("location", "unknown"),
+            "context": interaction_data.get("context", {}),
+            "important_points": interaction_data.get("important_points", [])
+        })
+
+        # Update relationship if needed
+        if "relationship_change" in interaction_data:
+            self.npc_manager.update_relationship(npc_id, "player", {
+                "status": interaction_data["relationship_change"].get("new_status"),
+                "trust_level": interaction_data["relationship_change"].get("trust_level"),
+                "change_description": interaction_data["relationship_change"].get("description")
+            })
+
+        # Add story event if significant
+        if "story_event" in interaction_data:
+            self.npc_manager.add_story_event(npc_id, interaction_data["story_event"])
+
     def _create_story_prompt(self, player_context: Dict[str, Any], event_type: str) -> str:
         """
         Create a detailed prompt for story generation.

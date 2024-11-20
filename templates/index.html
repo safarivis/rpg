@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cyberpunk RPG</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-family: 'Consolas', monospace;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            grid-template-rows: 1fr auto;
+            gap: 20px;
+            height: 100%;
+        }
+
+        #character-info {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 5px;
+            grid-row: span 2;
+        }
+
+        .main-area {
+            display: grid;
+            grid-template-rows: 1fr auto;
+            gap: 20px;
+        }
+
+        #story-area {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-y: auto;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        #story-area::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        #story-area::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        #story-area::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 5px;
+        }
+
+        #input-area {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 5px;
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            background-color: #1a1a1a;
+            border: 1px solid #4a4a4a;
+            color: #e0e0e0;
+            border-radius: 3px;
+            font-family: inherit;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #0052a3;
+        }
+
+        h2 {
+            color: #00ccff;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #4a4a4a;
+            padding-bottom: 5px;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .highlight {
+            color: #00ccff;
+        }
+
+        .item {
+            color: #00ff9d;
+        }
+
+        .npc {
+            color: #ff69b4;
+        }
+
+        p {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="character-info">
+            <div class="section">
+                <h2>Character Status</h2>
+                <div id="status"></div>
+            </div>
+            <div class="section">
+                <h2>Inventory</h2>
+                <div id="inventory"></div>
+            </div>
+            <div class="section">
+                <h2>Relationships</h2>
+                <div id="relationships"></div>
+            </div>
+        </div>
+        <div class="main-area">
+            <div id="story-area"></div>
+            <div id="input-area">
+                <input type="text" id="command-input" placeholder="Enter your command...">
+                <button>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateCharacterInfo(state) {
+            if (!state) return;
+            
+            // Update Status
+            const statusHtml = `
+                <p>Name: <span class="highlight">${state.name || 'Unknown'}</span></p>
+                <p>Health: <span class="highlight">${state.health || 'N/A'}</span></p>
+                <p>Credits: <span class="highlight">${state.credits || 0}</span></p>
+                <p>Location: <span class="highlight">${state.location || 'Unknown'}</span></p>
+            `;
+            document.getElementById('status').innerHTML = statusHtml;
+            
+            // Update Inventory
+            const inventoryHtml = state.inventory ? 
+                state.inventory.map(item => `<p><span class="item">• ${item}</span></p>`).join('') :
+                '<p>No items</p>';
+            document.getElementById('inventory').innerHTML = inventoryHtml;
+            
+            // Update Relationships
+            const relationshipsHtml = state.relationships ? 
+                Object.entries(state.relationships)
+                    .map(([name, status]) => `<p><span class="npc">${name}</span>: ${status}</p>`)
+                    .join('') :
+                '<p>No known relationships</p>';
+            document.getElementById('relationships').innerHTML = relationshipsHtml;
+        }
+
+        function updateStoryArea(text) {
+            if (!text) return;
+            const storyArea = document.getElementById('story-area');
+            const p = document.createElement('p');
+            p.textContent = text;  
+            storyArea.appendChild(p);
+            storyArea.scrollTop = storyArea.scrollHeight;
+        }
+
+        function sendCommand() {
+            const input = document.getElementById('command-input');
+            const command = input.value.trim();
+            if (!command) return;
+
+            input.disabled = true;
+            const button = document.querySelector('button');
+            button.disabled = true;
+
+            fetch('/send_command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ command: command }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                updateStoryArea(data.response);
+                updateCharacterInfo(data.character_state);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                updateStoryArea('An error occurred while processing your command. Please try again.');
+            })
+            .finally(() => {
+                input.value = '';
+                input.disabled = false;
+                button.disabled = false;
+                input.focus();
+            });
+        }
+
+        // Handle Enter key and Space key for button
+        document.getElementById('command-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || (e.key === ' ' && e.ctrlKey)) {
+                e.preventDefault();
+                sendCommand();
+            }
+        });
+
+        document.querySelector('button').addEventListener('click', sendCommand);
+
+        // Initial character status load
+        fetch('/get_status')
+            .then(response => response.json())
+            .then(data => updateCharacterInfo(data))
+            .catch(error => console.error('Error:', error));
+    </script>
+</body>
+</html>
