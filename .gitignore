@@ -16,6 +16,8 @@ pip-cache/
 # Environment and secrets
 .env
 mistral key.txt
+# Keep .env.local for development
+!web-ui/.env.local
 
 # Local game state
 *.json

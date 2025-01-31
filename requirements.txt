@@ -2,4 +2,10 @@ mistralai>=0.0.7
 requests>=2.31.0
 python-dotenv>=1.0.0
 colorama>=0.4.6
-flask==3.0.0
+flask>=3.0.0
+flask-cors>=5.0.0
+fastapi>=0.115.8
+uvicorn>=0.34.0
+pydantic>=2.10.6
+elevenlabs==0.2.26
+python-multipart>=0.0.6

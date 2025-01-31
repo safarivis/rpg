@@ -16,9 +16,9 @@ class LLMService:
     def __init__(self, api_key=None):
         """Initialize the LLM service."""
         if not api_key:
-            api_key = os.getenv("LLM_API_KEY")
+            api_key = os.getenv("MISTRAL_API_KEY")
             if not api_key:
-                raise ValueError("LLM API key not found in environment variables")
+                raise ValueError("Mistral API key not found in environment variables")
         
         self.api_key = api_key
         self.client = MistralClient(api_key=self.api_key)
@@ -35,9 +35,71 @@ class LLMService:
         self.npc_manager = NPCManager()
         self.current_character = None
         self.current_character_name = None
-        
-        if not config.has_valid_api_key:
-            raise ValueError("No valid API key found. Please check your .env file.")
+
+    def generate_response(self, prompt, context=None):
+        """Generate a response from the LLM."""
+        try:
+            # Get player info and build scene context
+            player = context.get('player') if context else None
+            scene_context = self._build_scene_context(player) if player else ""
+            
+            # Format the context for the prompt
+            char_state = self._format_character_state(player)
+            conversation_history = self._format_conversation_history()
+            story_context = self._format_story_context()
+            
+            # Build system prompt with scene context
+            system_prompt = f"""You are narrating a role-playing game set in {scene_context}.
+Your responses should be consistent with this setting and the player's choices.
+Maintain the atmosphere and themes appropriate for the time period and genre."""
+
+            # Build a narrative of recent events
+            recent_narrative = self._build_recent_narrative()
+            
+            # Track major story events and quest progress
+            if 'story_progress' not in self.story_context:
+                self.story_context['story_progress'] = []
+            
+            # Track important story beats
+            story_beats = {
+                'black decoder': 'Acquired the black decoder device',
+                'data chip': 'Received encrypted data chip from Eva',
+                'cargo': 'Assigned to protect valuable cargo',
+                'safe house': 'Moved to safe house location',
+                'compromised': 'Cargo and device were compromised'
+            }
+            
+            for beat_key, beat_desc in story_beats.items():
+                if beat_key in prompt.lower() or beat_key in recent_narrative.lower():
+                    if beat_desc not in self.story_context['story_progress']:
+                        self.story_context['story_progress'].append(beat_desc)
+
+            # Build the messages list
+            messages = [
+                ChatMessage(role="system", content=system_prompt),
+                ChatMessage(role="user", content=f"{char_state}\n{story_context}\n{recent_narrative}\n{prompt}")
+            ]
+            
+            # Call the Mistral API
+            response = self.client.chat(
+                model="mistral-tiny",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=500
+            )
+            
+            # Extract the response content
+            result = response.choices[0].message.content
+            
+            # Update conversation history and analyze response
+            self._update_conversation_history(prompt, result)
+            self._analyze_and_update_character(prompt, result)
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error generating response: {str(e)}")
+            return "I apologize, but I seem to be having trouble processing that request. Perhaps we should try a different approach?"
 
     def load_character(self, character_name: str) -> bool:
         """Load a character's data and context."""
@@ -82,6 +144,29 @@ class LLMService:
         # Save after significant updates
         self.save_current_character()
 
+    def _build_scene_context(self, player):
+        """Build scene context based on player attributes."""
+        time_period = player.get('time_period', 'present').lower()
+        setting = player.get('setting', 'fantasy').lower()
+        
+        # Base context for different time periods
+        time_contexts = {
+            'past': {
+                'fantasy': "A medieval world of castles, swords, and magic",
+                'realism': "A historical world of kingdoms, trade routes, and political intrigue"
+            },
+            'present': {
+                'fantasy': "A modern world where magic and technology coexist",
+                'realism': "The contemporary world of cities, technology, and global connections"
+            },
+            'future': {
+                'fantasy': "A far future where magic and advanced technology are one",
+                'realism': "A cyberpunk world of megacorporations, advanced tech, and urban sprawl"
+            }
+        }
+        
+        return time_contexts.get(time_period, {}).get(setting, "A mysterious world")
+
     def _format_character_state(self, player=None):
         """Format character state for LLM context."""
         if not player:
@@ -122,93 +207,6 @@ class LLMService:
                         self.story_context[key].update(value)
                     else:
                         self.story_context[key] = value
-
-    def generate_response(self, prompt, context=None):
-        """Generate a response from the LLM."""
-        try:
-            # Format the context for the prompt
-            char_state = self._format_character_state(context.get('player') if context else None)
-            conversation_history = self._format_conversation_history()
-            story_context = self._format_story_context()
-            
-            # Build a narrative of recent events
-            recent_narrative = self._build_recent_narrative()
-            
-            # Track major story events and quest progress
-            if 'story_progress' not in self.story_context:
-                self.story_context['story_progress'] = []
-            
-            # Track important story beats
-            story_beats = {
-                'black decoder': 'Acquired the black decoder device',
-                'data chip': 'Received encrypted data chip from Eva',
-                'cargo': 'Assigned to protect valuable cargo',
-                'safe house': 'Moved to safe house location',
-                'compromised': 'Cargo and device were compromised'
-            }
-            
-            for beat_key, beat_desc in story_beats.items():
-                if beat_key in prompt.lower() or beat_key in recent_narrative.lower():
-                    if beat_desc not in self.story_context['story_progress']:
-                        self.story_context['story_progress'].append(beat_desc)
-
-            system_prompt = f"""You are the AI Dungeon Master for a cyberpunk RPG game. Your role is to create an immersive, atmospheric experience.
-
-Current Character State:
-{char_state}
-
-Story Progress:
-{chr(10).join(f"- {event}" for event in self.story_context['story_progress'])}
-
-Recent Events:
-{recent_narrative}
-
-Story Context:
-{story_context}
-
-Conversation History:
-{conversation_history}
-
-Setting: A gritty cyberpunk future where high technology meets low life. Neon lights pierce the perpetual smog, megacorporations rule from gleaming towers, while life on the streets is a daily struggle for survival.
-
-Guidelines:
-1. Describe what the player sees, hears, and experiences in vivid detail
-2. Include sensory details: smells, sounds, sights, atmosphere
-3. Maintain consistency with previous events and character relationships
-4. React to player actions with realistic consequences
-5. NEVER repeat exact dialogue or scenes
-6. Keep track of items, relationships, and story progress
-7. NEVER include system messages or DM notes in your responses
-8. Continue the scene from where we left off, maintaining consistency with recent events
-
-Remember: You are actively narrating a scene. Never break character or include meta-commentary about being a DM."""
-
-            messages = [
-                ChatMessage(role="system", content=system_prompt),
-                ChatMessage(role="user", content=prompt)
-            ]
-            
-            response = self.client.chat(
-                messages=messages,
-                model="mistral-tiny",
-                temperature=0.7,
-                max_tokens=500
-            )
-            
-            # Update conversation history and analyze response
-            result = response.choices[0].message.content
-            self._update_conversation_history(prompt, result)
-            self._analyze_and_update_character(prompt, result)
-            
-            # Save character state after each interaction
-            self.save_current_character()
-            
-            # Add yellow color to the narrative text
-            return f"\033[33m{result}\033[0m"
-            
-        except Exception as e:
-            print(f"Error generating response: {str(e)}")
-            return "I encountered an error processing your action. Please try again."
 
     def _format_story_context(self):
         """Format story context for the LLM."""

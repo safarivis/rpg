@@ -1,36 +1,19 @@
 from flask import Flask, render_template, request, jsonify
 from llm_service import LLMService
+from character_creation import character_creation
+from player import load_player_data, save_player_data, default_player
 import json
 import re
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 llm_service = None
 
 def init_llm_service():
     global llm_service
     if llm_service is None:
         llm_service = LLMService()
-        # Try to load the character, if it fails, create a new one
-        if not llm_service.load_character("player"):
-            llm_service.current_character = {
-                "name": "Strijder",
-                "resources": {
-                    "health": 100,
-                    "credits": 500
-                },
-                "location": "Neon District",
-                "inventory": [
-                    "Black Decoder Gadget",
-                    "Data Chip from Eva",
-                    "Standard Issue Pistol",
-                    "Light Combat Armor"
-                ],
-                "relationships": {
-                    "Eva": "Friendly - Helped with data retrieval",
-                    "Mysterious Contact": "Unknown - Awaiting meeting"
-                }
-            }
-            llm_service.current_character_name = "player"
 
 def strip_ansi_codes(text):
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
@@ -38,10 +21,13 @@ def strip_ansi_codes(text):
 
 def get_character_state():
     global llm_service
-    if llm_service is None or llm_service.current_character is None:
+    if llm_service is None:
         init_llm_service()
     
-    char = llm_service.current_character
+    char = load_player_data("player")
+    if not char:
+        return None
+        
     return {
         'name': char.get('name', 'Unknown'),
         'health': char.get('resources', {}).get('health', 100),
@@ -50,6 +36,74 @@ def get_character_state():
         'inventory': char.get('inventory', []),
         'relationships': char.get('relationships', {})
     }
+
+@app.route('/api/character/create', methods=['POST'])
+def create_character():
+    try:
+        data = request.json
+        name = data.get('name')
+        step = data.get('step')
+        input_value = data.get('input_value')
+
+        player = load_player_data(name)
+        if not player:
+            player = default_player.copy()
+            player["name"] = name
+
+        if step == "initial":
+            return jsonify({
+                "step": "gender",
+                "prompt": "The voice asks: 'What is your gender?'",
+                "options": ["Male", "Female", "Other"],
+                "character_data": player
+            })
+        elif step == "gender":
+            player["gender"] = input_value
+            save_player_data(player)
+            return jsonify({
+                "step": "race",
+                "prompt": "The voice continues: 'What race are you?'",
+                "options": ["Human", "Elf", "Dwarf", "Other"],
+                "character_data": player
+            })
+        elif step == "race":
+            player["race"] = input_value
+            save_player_data(player)
+            return jsonify({
+                "step": "time_period",
+                "prompt": "When are you from?",
+                "options": ["Past", "Present", "Future"],
+                "character_data": player
+            })
+        elif step == "time_period":
+            player["time_period"] = input_value
+            save_player_data(player)
+            return jsonify({
+                "step": "role",
+                "prompt": "What is your role in this world?",
+                "options": ["Warrior", "Mage", "Rogue", "Healer"],
+                "character_data": player
+            })
+        elif step == "role":
+            player["role"] = input_value
+            save_player_data(player)
+            return jsonify({
+                "step": "complete",
+                "prompt": f"Welcome, {player['name']} the {player['race']} {player['role']}. Your journey begins...",
+                "character_data": player
+            })
+        else:
+            return jsonify({"error": "Invalid step"}), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/character/<name>', methods=['GET'])
+def get_character(name):
+    player = load_player_data(name)
+    if not player:
+        return jsonify({"error": "Character not found"}), 404
+    return jsonify(player)
 
 @app.route('/')
 def index():

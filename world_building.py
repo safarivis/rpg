@@ -15,38 +15,24 @@ def format_attributes(attributes, title="Attributes"):
 
 def generate_world_prompt(player):
     """
-    Generate a detailed world-building prompt based on the player's attributes.
+    Generate a basic world-building prompt based on the player's attributes.
     Parameters:
         - player (dict): The player's data.
     Returns:
         - str: A descriptive world-building prompt.
     """
-    role_details = player.get("role_details", "a mysterious figure")
-    motivation = player.get("role_motivation", "unknown reasons")
-    factions = generate_factions(player)
+    # Get basic player info with defaults
+    name = player.get('name', 'Unknown')
+    race = player.get('race', 'being')
+    gender = player.get('gender', 'unknown')
+    role = player.get('role', 'adventurer')
+    time_period = player.get('time_period', 'present')
 
     # Generate the prompt
-    prompt = f"""
-    Create a detailed world for a character named {player['name']}, a {player['race'].lower()} {player['gender'].lower()}.
-    They are living in the {player['time_period']} in a {player['setting'].lower()} setting.
-    They play the role of a {player['role']}.
+    prompt = f"""You find yourself in a world where {race}s like yourself have carved out their own destiny. 
+As a {role} from the {time_period}, you have unique perspectives and abilities that set you apart. 
+What challenges await you in this vast realm? Only time will tell..."""
 
-    Here are additional details:
-    - Strengths: {', '.join(player['strengths'])}
-    - Weaknesses: {', '.join(player['weaknesses'])}
-    {format_attributes(player['physical_attributes'], "Physical Attributes")}
-    - Favorite Music: {player['favorites']['music']}
-    - Favorite Movies: {player['favorites']['movies']}
-    - Favorite Books: {player['favorites']['books']}
-    - Favorite Graphics Style: {player['favorites']['graphics_style']}
-    - Role Details: {role_details}
-    - Motivation: {motivation}
-
-    Factions shaping the world:
-    {factions}
-
-    Present a major conflict or challenge tied to their role and setting.
-    """
     return prompt
 
 def generate_factions(player):

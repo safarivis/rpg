@@ -26,6 +26,8 @@ from crew import (
 from time_manager import TimeManager
 from relationship_manager import RelationshipManager
 from llm_service import LLMService
+# Commenting out TTS import since it's paused
+# from tts_service import TTSService
 from story_manager import (
     load_game_state,
     save_game_state,
@@ -52,7 +54,7 @@ YELLOW = "\033[33m"
 RESET = "\033[0m"
 
 # Get absolute path to .env file
-env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web-ui', '.env.local')
 load_dotenv(env_path)
 
 event_system = EventSystem()
@@ -461,7 +463,9 @@ def initialize_game_systems():
     time_manager = TimeManager()
     relationship_manager = RelationshipManager()
     llm_service = LLMService()
-    return time_manager, relationship_manager, llm_service
+    tts_service = None
+    print("TTS service is currently paused")
+    return time_manager, relationship_manager, llm_service, tts_service
 
 
 def add_credits(player: dict, amount: int) -> None:
@@ -578,11 +582,11 @@ def main():
     print("Script is starting...")
     
     # Load environment variables
-    api_key = os.getenv("LLM_API_KEY")
+    api_key = os.getenv("MISTRAL_API_KEY")
     if not api_key:
-        print("Error: LLM_API_KEY not found in environment variables")
-        print("Please make sure you have a .env file with LLM_API_KEY=your_api_key")
-        return
+        print("Error: MISTRAL_API_KEY not found in environment variables")
+        print(f"Please make sure you have MISTRAL_API_KEY in {env_path}")
+        exit(1)
     
     # Initialize game systems
     time_manager = TimeManager()
@@ -598,12 +602,28 @@ def main():
         print("Please check your API key and try again")
         return
     
+    # Initialize TTS service
+    try:
+        # Commenting out TTS initialization since it's paused
+        # tts_service = TTSService()
+        # print("TTS service initialized successfully")
+        tts_service = None
+        print("TTS service is currently paused")
+    except Exception as e:
+        print(f"Warning: TTS service not available - {str(e)}")
+        tts_service = None
+    
     # Load or create player
     player = load_player_data("strijder")  # Try to load existing player
     if not player:
         print("Creating new character...")
-        player = default_player()  # Use default player if no save exists
-        save_player_data(player)
+        player = character_creation()  # Use character creation instead of default player
+        if player:
+            save_player_data(player)
+        else:
+            print("Character creation failed. Using default player...")
+            player = default_player()
+            save_player_data(player)
     
     # Initialize status manager with current state
     status_manager.update_state(player)
@@ -662,6 +682,10 @@ def main():
         if llm_service:
             scene = llm_service.generate_response(action, action_context)
             print("\n" + scene)
+            
+            # Use TTS to narrate the scene if available
+            if tts_service:
+                tts_service.narrate(scene)
             
             # Check for any state changes after LLM response
             new_player = load_player_data(player['name'])
